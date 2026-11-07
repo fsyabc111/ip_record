@@ -4,6 +4,8 @@
 
 已实现 Swift 6 + AppKit / SwiftUI 单进程应用、SQLite 历史、官方 C 读取器的离线双栈归属、筛选、CSV／JSON 导出、暂停持久化、空档标记和登录项管理。设计依据见 [封版 v1.0](docs/design/README.md)；实测范围与未验收事项见 [验证报告](docs/verification/v1.0-report.md)。
 
+后续内存优化的范围、测量方法与验收标准见 [内存优化规划](docs/plans/memory-optimization.md)，目前仅规划，尚未实施。
+
 ## 构建与安装
 
 当前验证环境：Apple Silicon、macOS 27.0.1、Apple Swift 6.4 / Command Line Tools 27。无需完整 Xcode、Python 运行时或外部 Swift 包。
