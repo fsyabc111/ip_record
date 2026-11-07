@@ -1,0 +1,190 @@
+{
+  "checked_at_utc": "2026-11-07T15:08:10.413130+00:00",
+  "scope": "Local lookup functionality; not independent verification of geographical accuracy",
+  "manifest_files_verified": 7,
+  "network_sockets_blocked": true,
+  "public_samples": 12,
+  "countries_returned": [
+    "AU",
+    "BR",
+    "CN",
+    "GB",
+    "JP",
+    "SG",
+    "US",
+    "ZA"
+  ],
+  "non_public_samples": 5,
+  "invalid_input_rejected": true,
+  "results": [
+    {
+      "ip": "113.118.113.77",
+      "lookup_ip": "113.118.113.77",
+      "status": "found",
+      "country": "中国",
+      "province": "广东省",
+      "city": "深圳市",
+      "isp": "电信",
+      "country_code": "CN",
+      "raw": "中国|广东省|深圳市|电信|CN",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "1.2.3.4",
+      "lookup_ip": "1.2.3.4",
+      "status": "found",
+      "country": "Australia",
+      "province": "Queensland",
+      "city": "Brisbane",
+      "isp": null,
+      "country_code": "AU",
+      "raw": "Australia|Queensland|Brisbane|0|AU",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "81.2.69.142",
+      "lookup_ip": "81.2.69.142",
+      "status": "found",
+      "country": "United Kingdom",
+      "province": "England",
+      "city": null,
+      "isp": null,
+      "country_code": "GB",
+      "raw": "United Kingdom|England|0|0|GB",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "133.242.0.3",
+      "lookup_ip": "133.242.0.3",
+      "status": "found",
+      "country": "Japan",
+      "province": "Hokkaido",
+      "city": "Ishikari",
+      "isp": null,
+      "country_code": "JP",
+      "raw": "Japan|Hokkaido|Ishikari|0|JP",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "139.99.0.1",
+      "lookup_ip": "139.99.0.1",
+      "status": "found",
+      "country": "Singapore",
+      "province": "Singapore",
+      "city": null,
+      "isp": null,
+      "country_code": "SG",
+      "raw": "Singapore|Singapore|0|0|SG",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "41.0.0.1",
+      "lookup_ip": "41.0.0.1",
+      "status": "found",
+      "country": "South Africa",
+      "province": "Gauteng",
+      "city": null,
+      "isp": null,
+      "country_code": "ZA",
+      "raw": "South Africa|Gauteng|0|0|ZA",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "200.160.2.3",
+      "lookup_ip": "200.160.2.3",
+      "status": "found",
+      "country": "Brazil",
+      "province": "São Paulo",
+      "city": "São Paulo",
+      "isp": "TELEFÔNICA BRASIL S.A",
+      "country_code": "BR",
+      "raw": "Brazil|São Paulo|São Paulo|TELEFÔNICA BRASIL S.A|BR",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "8.8.8.8",
+      "lookup_ip": "8.8.8.8",
+      "status": "found",
+      "country": "United States",
+      "province": "California",
+      "city": null,
+      "isp": "Google LLC",
+      "country_code": "US",
+      "raw": "United States|California|0|Google LLC|US",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "240e:3b7:3272:d8d0:db09:c067:8d59:539e",
+      "lookup_ip": "240e:3b7:3272:d8d0:db09:c067:8d59:539e",
+      "status": "found",
+      "country": "中国",
+      "province": "广东省",
+      "city": "深圳市",
+      "isp": "电信",
+      "country_code": "CN",
+      "raw": "中国|广东省|深圳市|电信|CN",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "2604:a840:3::a04d",
+      "lookup_ip": "2604:a840:3::a04d",
+      "status": "found",
+      "country": "United States",
+      "province": "California",
+      "city": "San Jose",
+      "isp": "xTom",
+      "country_code": "US",
+      "raw": "United States|California|San Jose|xTom|US",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "2001:4860:4860::8888",
+      "lookup_ip": "2001:4860:4860::8888",
+      "status": "found",
+      "country": "United States",
+      "province": "Florida",
+      "city": "Miami",
+      "isp": "Google LLC",
+      "country_code": "US",
+      "raw": "United States|Florida|Miami|Google LLC|US",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "::ffff:113.118.113.77",
+      "lookup_ip": "113.118.113.77",
+      "status": "found",
+      "country": "中国",
+      "province": "广东省",
+      "city": "深圳市",
+      "isp": "电信",
+      "country_code": "CN",
+      "raw": "中国|广东省|深圳市|电信|CN",
+      "source": "ip2region/v3.18.0"
+    },
+    {
+      "ip": "192.168.1.12",
+      "lookup_ip": "192.168.1.12",
+      "status": "non_public"
+    },
+    {
+      "ip": "127.0.0.1",
+      "lookup_ip": "127.0.0.1",
+      "status": "non_public"
+    },
+    {
+      "ip": "::1",
+      "lookup_ip": "::1",
+      "status": "non_public"
+    },
+    {
+      "ip": "2001:db8::1",
+      "lookup_ip": "2001:db8::1",
+      "status": "non_public"
+    },
+    {
+      "ip": "224.0.0.1",
+      "lookup_ip": "224.0.0.1",
+      "status": "non_public"
+    }
+  ]
+}
