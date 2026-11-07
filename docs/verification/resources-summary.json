@@ -1,0 +1,21 @@
+{
+  "sample_seconds": 1801.314,
+  "samples": 181,
+  "cpu_percent_one_core_whole_run": 0.09077972055923682,
+  "cpu_percent_last_ten_minutes": 0.015565456735681386,
+  "peak_rss_mib": 136.53125,
+  "steady_rss_min_mib": 73.75,
+  "steady_rss_max_mib": 136.53125,
+  "final_footprint_mib": 48.7979736328125,
+  "disk_read_bytes": 671744,
+  "disk_written_bytes": 851968,
+  "final_database_bytes": 506336,
+  "final_rounds": 9,
+  "final_requests": 22,
+  "storage_blocked": 0,
+  "exit_code": 0,
+  "wall_seconds": 1811.32,
+  "mach_timebase_nanoseconds_per_tick": 41.666666666666664,
+  "measurement_binary_sha256": "3f239223b10f7e6805ff1fad72ae95394821bdaa94493f54d43dad6ffb651929",
+  "conditions": "Current Mac, real network, background recording; native UI/accessibility validation occurred in parallel. This is the earlier recording build, not an exact final-HEAD 30-minute rerun."
+}

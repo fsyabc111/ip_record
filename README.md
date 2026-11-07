@@ -12,6 +12,7 @@
 cd /Users/fsy/code/ip_record
 ./scripts/test.sh
 ./scripts/install-app.sh --open
+./scripts/verify-bundle.sh "$HOME/Applications/IP Record.app"
 ```
 
 构建产物为 `dist/IP Record.app`；固定安装到 `~/Applications/IP Record.app`。替换前从应用菜单明确退出，安装脚本会拒绝覆盖运行中的进程。
