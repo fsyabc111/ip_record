@@ -20,7 +20,15 @@ private final class StubProtocol: URLProtocol, @unchecked Sendable {
       client?.urlProtocol(self, didFailWithError: URLError(.secureConnectionFailed))
       return
     }
-    let status = mode == "http" ? 403 : 200
+    if mode == "redirect" {
+      client?.urlProtocol(
+        self, wasRedirectedTo: URLRequest(url: URL(string: "https://unexpected.example/")!),
+        redirectResponse: HTTPURLResponse(
+          url: request.url!, statusCode: 302, httpVersion: "HTTP/1.1",
+          headerFields: ["Location": "https://unexpected.example/"])!)
+      return
+    }
+    let status = mode == "auth" ? 407 : (mode == "http" ? 403 : 200)
     client?.urlProtocol(
       self,
       didReceive: HTTPURLResponse(
@@ -50,7 +58,8 @@ private func stubProbe(_ mode: String) -> PublicIPProbe {
   #expect(success.status == "confirmed")
   #expect(success.address?.text == "8.8.8.8")
   for (mode, category) in [
-    ("http", "http"), ("oversized", "oversized"), ("invalid", "invalidAddress"),
+    ("http", "http"), ("auth", "authentication"), ("redirect", "redirect"),
+    ("oversized", "oversized"), ("invalid", "invalidAddress"),
     ("timeout", "timeout"), ("dns", "dns"), ("tls", "tls"),
   ] {
     let result = await stubProbe(mode).probe(.v4)

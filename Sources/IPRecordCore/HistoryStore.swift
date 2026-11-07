@@ -262,6 +262,9 @@ public actor HistoryStore {
     }
     connection = db
     try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    for suffix in ["-wal", "-shm"] where fm.fileExists(atPath: url.path + suffix) {
+      try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path + suffix)
+    }
   }
   public func beginSession(now: Date = Date()) throws -> SavedState? {
     try open()

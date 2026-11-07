@@ -152,6 +152,9 @@ final class AppShell: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopov
     let appMenu = NSMenu(title: "IP Record")
     main.addItem(appItem)
     appItem.submenu = appMenu
+    let current = NSMenuItem(title: "显示当前状态", action: #selector(togglePopover), keyEquivalent: "i")
+    current.target = self
+    appMenu.addItem(current)
     let settings = NSMenuItem(title: "设置…", action: #selector(settingsAction), keyEquivalent: ",")
     settings.target = self
     appMenu.addItem(settings)
@@ -165,8 +168,9 @@ final class AppShell: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopov
     let fileMenu = NSMenu(title: "文件")
     main.addItem(file)
     file.submenu = fileMenu
-    fileMenu.addItem(
-      withTitle: "关闭窗口", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+    let close = NSMenuItem(title: "关闭窗口", action: #selector(closeWindow), keyEquivalent: "w")
+    close.target = self
+    fileMenu.addItem(close)
     let edit = NSMenuItem()
     let editMenu = NSMenu(title: "编辑")
     main.addItem(edit)
@@ -192,6 +196,14 @@ final class AppShell: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopov
     statusItem.button?.toolTip = "IP Record · " + model.displayTitle
     statusItem.button?.setAccessibilityLabel("IP Record · " + model.displayTitle)
   }
+  @objc private func closeWindow() {
+    let window =
+      NSApp.keyWindow
+      ?? NSApp.orderedWindows.first {
+        $0.isVisible && ($0 === historyWindow || $0 === settingsWindow || $0 === welcomeWindow)
+      }
+    window?.performClose(nil)
+  }
   @objc private func togglePopover() {
     if let popover, popover.isShown {
       popover.performClose(nil)
@@ -209,6 +221,7 @@ final class AppShell: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopov
       rootView: CurrentView(model: model, height: CGFloat(height)))
     popover.contentSize = NSSize(width: 392, height: height)
     self.popover = popover
+    NSApp.activate()
     popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     popover.contentViewController?.view.window?.makeKey()
   }
@@ -319,14 +332,6 @@ final class AppShell: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopov
     if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
     for token in observers { NSWorkspace.shared.notificationCenter.removeObserver(token) }
   }
-  private func capture(_ view: NSView?, to url: URL) {
-    guard let view else { return }
-    view.layoutSubtreeIfNeeded()
-    view.displayIfNeeded()
-    guard let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
-    view.cacheDisplay(in: view.bounds, to: image)
-    try? image.representation(using: .png, properties: [:])?.write(to: url)
-  }
   private func runShellValidation() async {
     guard let directory = validationDirectory else { return }
     // Programmatic integration evidence, not mouse/keyboard or user acceptance.
@@ -336,26 +341,14 @@ final class AppShell: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopov
     }
     showHistory()
     try? await Task.sleep(for: .milliseconds(500))
-    capture(historyWindow?.contentView, to: directory.appendingPathComponent("history.png"))
     let first = historyWindow
     showHistory()
     let reusedHistory = historyWindow === first
     showSettings()
     try? await Task.sleep(for: .milliseconds(500))
-    capture(settingsWindow?.contentView, to: directory.appendingPathComponent("settings.png"))
     let settings = settingsWindow
     showSettings()
     let reusedSettings = settingsWindow === settings
-    let renderer = ImageRenderer(
-      content: CurrentView(model: model).environment(\.colorScheme, .light).background(
-        Color(nsColor: .windowBackgroundColor)))
-    renderer.scale = 2
-    if let image = renderer.nsImage, let tiff = image.tiffRepresentation,
-      let bitmap = NSBitmapImageRep(data: tiff)
-    {
-      try? bitmap.representation(using: .png, properties: [:])?.write(
-        to: directory.appendingPathComponent("current.png"))
-    }
     if CommandLine.arguments.contains("--hold-ui") { try? await Task.sleep(for: .seconds(180)) }
     historyWindow?.close()
     settingsWindow?.close()

@@ -149,11 +149,20 @@ import SwiftUI
         let panel = NSSavePanel()
         panel.title = "导出 \(count) 条历史"
         panel.message = "所选范围包含 \(count) 条记录。文件可能包含公网地址及本机网络配置，请妥善保存。"
-        panel.nameFieldStringValue =
-          "IP Record-\(Date().formatted(.iso8601.year().month().day().dateSeparator(.dash)) ).\(format)"
+        let filenameDate = DateFormatter()
+        filenameDate.locale = Locale(identifier: "en_US_POSIX")
+        filenameDate.dateFormat = "yyyy-MM-dd"
+        filenameDate.timeZone = .current
+        panel.nameFieldStringValue = "IP Record-\(filenameDate.string(from:Date())).\(format)"
         panel.canCreateDirectories = true
         let response = await withCheckedContinuation { continuation in
-          panel.begin { response in continuation.resume(returning: response) }
+          if let parent = NSApp.keyWindow {
+            panel.beginSheetModal(for: parent) { response in
+              continuation.resume(returning: response)
+            }
+          } else {
+            panel.begin { response in continuation.resume(returning: response) }
+          }
         }
         guard response == .OK, let destination = panel.url else {
           exportRunning = false

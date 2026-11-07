@@ -98,12 +98,18 @@ private final class ProbeRequest: NSObject, URLSessionDataDelegate, @unchecked S
     let failure = error ?? self.failure
     let parsed = PublicIPProbe.validate(body, family: family)
     let finalError = failure ?? parsed.1
-    let result = ProbeResult(
+    var result = ProbeResult(
       family: family,
       status: finalError == nil
         ? "confirmed" : (finalError == "cancelled" ? "cancelled" : "failed"),
       address: finalError == nil ? parsed.0 : nil, error: finalError, httpStatus: httpStatus,
       startedAt: started, completedAt: Date())
+    if finalError == nil,
+      let text = String(data: body, encoding: .utf8)?.trimmingCharacters(
+        in: CharacterSet(charactersIn: " \t\r\n\u{0b}\u{0c}")), text != result.address?.text
+    {
+      result.originalAddressText = text
+    }
     let session = self.session
     let task = self.task
     self.session = nil

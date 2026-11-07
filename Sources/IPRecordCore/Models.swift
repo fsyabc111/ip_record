@@ -16,6 +16,14 @@ public struct IPAddress: Codable, Hashable, Sendable {
   public init?(_ input: String) {
     let parts = input.split(separator: "%", omittingEmptySubsequences: false)
     guard parts.count <= 2, !parts[0].isEmpty else { return nil }
+    if parts.count == 2 {
+      guard !parts[1].isEmpty,
+        parts[1].utf8.allSatisfy({
+          (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0)
+            || [45, 46, 95].contains($0)
+        })
+      else { return nil }
+    }
     let bare = String(parts[0])
     var v4 = in_addr()
     var v6 = in6_addr()
@@ -28,6 +36,7 @@ public struct IPAddress: Codable, Hashable, Sendable {
     } else if inet_pton(AF_INET6, bare, &v6) == 1 {
       let raw = withUnsafeBytes(of: v6) { Array($0) }
       if raw.prefix(10).allSatisfy({ $0 == 0 }) && raw[10] == 255 && raw[11] == 255 {
+        guard parts.count == 1 else { return nil }
         family = .v4
         bytes = Array(raw.suffix(4))
         scope = nil
@@ -192,6 +201,7 @@ public struct KnownAddress: Codable, Equatable, Sendable {
 }
 public struct ProbeResult: Codable, Equatable, Sendable {
   public var family: Family
+  public var originalAddressText: String? = nil
   public var status: String
   public var address: IPAddress?
   public var error: String?

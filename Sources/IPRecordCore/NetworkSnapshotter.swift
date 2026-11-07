@@ -176,7 +176,7 @@ public struct NetworkSnapshotter: Sendable {
     return .init(source: "SCDynamicStoreCopyProxies", status: .available, values: values)
   }
 }
-private final class ConfigurationCallback {
+private final class ConfigurationCallback: Sendable {
   let epoch: EventEpoch
   let changed: @Sendable (String) -> Void
   init(epoch: EventEpoch, changed: @escaping @Sendable (String) -> Void) {

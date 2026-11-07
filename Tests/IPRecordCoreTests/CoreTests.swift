@@ -525,3 +525,217 @@ final class SimulationInputs: @unchecked Sendable {
     })
   try await store.finish()
 }
+
+final class ValiditySequence: @unchecked Sendable {
+  private let lock = NSLock()
+  private var calls = 0
+  func valid() -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    calls += 1
+    return calls < 3
+  }
+}
+@Test func invalidatedAtCommitRollsBackInsertedRowAndCurrentPointer() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+  _ = try await store.beginSession()
+  let first = try await store.applyCheck(sample())
+  let validity = ValiditySequence()
+  await #expect(throws: CancellationError.self) {
+    _ = try await store.applyCheck(sample(at: 1100, ip: "1.1.1.1"), isValid: { validity.valid() })
+  }
+  #expect(try await HistoryReader(url: url).count(filter: .init(category: "state")) == 1)
+  let current = await store.savedState()
+  #expect(current?.activeRecordID == first.activeRecordID)
+  #expect(current?.observation.v4.address?.text == "8.8.8.8")
+  let row = try #require(
+    try await HistoryReader(url: url).page(filter: .init(category: "state")).first)
+  #expect(row.confirmationSummary.closedAt == nil)
+  try await store.finish()
+}
+@Test func uncleanRestartHasGapAndCleanRestartDoesNotRepeatIt() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  var first: HistoryStore? = HistoryStore(url: url)
+  _ = try await first!.beginSession()
+  _ = try await first!.applyCheck(sample())
+  first = nil
+  let second = HistoryStore(url: url)
+  _ = try await second.beginSession()
+  _ = try await second.applyCheck(sample(at: 1100))
+  try await second.finish()
+  let third = HistoryStore(url: url)
+  _ = try await third.beginSession()
+  _ = try await third.applyCheck(sample(at: 1200))
+  let rows = try await HistoryReader(url: url).page(filter: .init())
+  #expect(rows.filter { $0.kind == "uncleanGap" }.count == 1)
+  #expect(rows.filter { $0.kind == "state" }.count == 3)
+  #expect(rows.filter { $0.kind != "state" }.allSatisfy { $0.firstObservation == nil })
+  try await third.finish()
+}
+@Test func independentV6SuccessAndGeographyDoesNotChangeFingerprint() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+  _ = try await store.beginSession()
+  var o = sample(status: "failed", error: "dns")
+  o.v6 = .init(
+    family: .v6, status: "confirmed", address: IPAddress("2606:4700:4700::1111"),
+    completedAt: Date(timeIntervalSince1970: 1000))
+  o.v6.geo = .init(
+    status: "found", country: "United States", countryCode: "US", databaseHash: "first")
+  let saved = try await store.applyCheck(o)
+  #expect(saved.observation.v4.address == nil)
+  #expect(saved.observation.known(.v6)?.address.family == .v6)
+  let firstFingerprint = o.fingerprint
+  o.v6.geo = .init(status: "unavailable", databaseHash: "second")
+  o.completedAt = Date(timeIntervalSince1970: 1100)
+  #expect(o.fingerprint == firstFingerprint)
+  _ = try await store.applyCheck(o)
+  let rows = try await HistoryReader(url: url).page(filter: .init(category: "state"))
+  #expect(rows.count == 1)
+  #expect(rows[0].firstObservation?.v6.geo?.databaseHash == "first")
+  #expect(try await HistoryReader(url: url).count(filter: .init(search: "美国")) == 1)
+  #expect(
+    GeoResult(status: "found", country: "Country", province: "Province").location
+      == "Country · Province")
+  try await store.finish()
+}
+@Test func exportFailureCannotReplaceDirectoryOrLeavePartialFile() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+  _ = try await store.beginSession()
+  _ = try await store.applyCheck(sample())
+  let target = dir.appendingPathComponent("existing-directory")
+  try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false)
+  await #expect(throws: (any Error).self) {
+    _ = try await HistoryReader(url: url).export(to: target, format: "json", filter: .init())
+  }
+  #expect(try target.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true)
+  #expect(
+    try FileManager.default.contentsOfDirectory(atPath: dir.path).allSatisfy {
+      !$0.hasPrefix(".iprecord-export-")
+    })
+  try await store.finish()
+}
+@Test func exportSnapshotSurvivesConcurrentClearAndDoesNotIncludeCurrentState() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+  _ = try await store.beginSession()
+  _ = try await store.applyCheck(sample())
+  var db: OpaquePointer?
+  sqlite3_open(url.path, &db)
+  let columns =
+    "session_id,kind,observed_at,timezone_offset,uptime,triggers,context_id,signature,snapshot_json,tags,search_text,v4,v6"
+  let rc = sqlite3_exec(
+    db,
+    "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<1200) INSERT INTO history_records(\(columns)) SELECT \(columns) FROM history_records,n WHERE kind='state' AND id=2",
+    nil, nil, nil)
+  sqlite3_close(db)
+  #expect(rc == SQLITE_OK)
+  let barrier = DispatchSemaphore(value: 0)
+  let signal = AsyncStream<Void>.makeStream()
+  let reader = HistoryReader(url: url)
+  let target = dir.appendingPathComponent("snapshot.json")
+  let exporting = Task {
+    try await reader.export(
+      to: target, format: "json", filter: .init(),
+      progress: { done, _ in
+        if done == 500 {
+          signal.continuation.yield(())
+          barrier.wait()
+        }
+      })
+  }
+  var iterator = signal.stream.makeAsyncIterator()
+  _ = await iterator.next()
+  do { try await store.clearHistory() } catch {
+    barrier.signal()
+    throw error
+  }
+  barrier.signal()
+  signal.continuation.finish()
+  #expect(try await exporting.value == 1202)
+  let parsed = try JSONSerialization.jsonObject(with: Data(contentsOf: target)) as! [String: Any]
+  #expect((parsed["records"] as? [Any])?.count == 1202)
+  #expect(parsed["currentState"] == nil)
+  #expect(try await reader.count(filter: .init()) == 0)
+  #expect(await store.savedState()?.observation.v4.address?.text == "8.8.8.8")
+  try await store.finish()
+}
+@Test func nativeReaderStressKeepsIndependentBuffersAndVersions() async throws {
+  let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+    .deletingLastPathComponent()
+  let geo = GeoResolver(directory: root.appendingPathComponent("data/ip2region"))
+  for i in 0..<2000 {
+    let ip = IPAddress(
+      i % 2 == 0 ? "8.8.\((i/256)%256).\(i%256)" : "2606:4700:4700::\(String(i+1,radix:16))")!
+    let result = await geo.lookup(ip)
+    #expect(result.status == "found" || result.status == "not_found")
+    #expect(result.databaseHash == DatabaseIdentity.bundled.first { $0.family == ip.family }?.hash)
+  }
+}
+
+@Test func scopedResponsesCannotSmuggleMappedPublicAddresses() {
+  for text in [
+    "2606:4700:4700::1111%", "::ffff:8.8.8.8%en0", "fe80::1%bad scope", "fe80::1%en0/path",
+  ] { #expect(IPAddress(text) == nil) }
+  #expect(
+    PublicIPProbe.validate(Data("2606:4700:4700::1111%".utf8), family: .v6).1 == "invalidAddress")
+  #expect(IPAddress("::ffff:8.8.8.8") == IPAddress("8.8.8.8"))
+}
+
+@Test func privateHistoryAndSidecarPermissions() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+  _ = try await store.beginSession()
+  _ = try await store.applyCheck(sample())
+  #expect(
+    (try FileManager.default.attributesOfItem(atPath: dir.path)[.posixPermissions] as? NSNumber)?
+      .intValue == 0o700)
+  for suffix in ["", "-wal", "-shm"] where FileManager.default.fileExists(atPath: url.path + suffix)
+  {
+    #expect(
+      (try FileManager.default.attributesOfItem(atPath: url.path + suffix)[.posixPermissions]
+        as? NSNumber)?.intValue == 0o600)
+  }
+  try await store.finish()
+}
+@Test func changedV4KeepsV6IdentityAndConfirmationIndependent() async throws {
+  let dir = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let url = dir.appendingPathComponent("history.sqlite")
+  let store = HistoryStore(url: dir.appendingPathComponent("history.sqlite"))
+  _ = try await store.beginSession()
+  var first = sample(at: 1000)
+  first.v6 = .init(
+    family: .v6, status: "confirmed", address: IPAddress("2606:4700:4700::1111"),
+    startedAt: Date(timeIntervalSince1970: 1000), completedAt: Date(timeIntervalSince1970: 1000))
+  first.v4.geo = .init(status: "found", country: "China", countryCode: "CN")
+  first.v6.geo = .init(status: "found", country: "United States", countryCode: "US")
+  _ = try await store.applyCheck(first)
+  var next = sample(at: 1100, ip: "1.1.1.1")
+  next.v6 = first.v6
+  next.v6.startedAt = Date(timeIntervalSince1970: 1100)
+  next.v6.completedAt = Date(timeIntervalSince1970: 1100)
+  let saved = try await store.applyCheck(next)
+  #expect(saved.observation.v6.address == first.v6.address)
+  #expect(saved.observation.v6.geo?.countryCode == "US")
+  let rows = try await HistoryReader(url: url).page(filter: .init(category: "state"))
+  #expect(rows.count == 2)
+  #expect(rows[0].tags == ["公网地址"])
+  #expect(rows[0].confirmationSummary.lastConfirmedV6At == Date(timeIntervalSince1970: 1100))
+  #expect(rows[1].firstObservation?.v6.completedAt == Date(timeIntervalSince1970: 1000))
+  try await store.finish()
+}

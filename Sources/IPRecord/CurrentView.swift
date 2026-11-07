@@ -70,7 +70,7 @@ struct PublicAddressView: View {
         } else {
           Text(!fresh && !history ? inactiveMessage : probeStatus(p)).font(.callout)
             .foregroundStyle(.secondary)
-          if p.status == "failed" {
+          if p.status == "failed" && (fresh || history) {
             Text(errorText(p.error) + (p.httpStatus.map { "（HTTP \($0)）" } ?? "")).font(.caption)
               .foregroundStyle(.secondary)
           }
@@ -95,6 +95,9 @@ struct PublicAddressView: View {
           }
         }
         if history {
+          if let raw = p.originalAddressText {
+            Text("原始表示：\(raw)").font(.caption).textSelection(.enabled)
+          }
           Text("来源：\(p.endpoint)\n请求：\(fullTime(p.startedAt)) — \(fullTime(p.completedAt))").font(
             .caption
           ).foregroundStyle(.secondary).textSelection(.enabled)
