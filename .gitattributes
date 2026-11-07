@@ -1,0 +1,2 @@
+# Preserve the pinned upstream C reader byte-for-byte (including its whitespace).
+Sources/CXDB/** -whitespace

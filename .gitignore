@@ -2,3 +2,8 @@ __pycache__/
 *.py[cod]
 *.part
 .DS_Store
+.build/
+dist/
+.artifacts/
+.swiftpm/
+*.xcuserstate
